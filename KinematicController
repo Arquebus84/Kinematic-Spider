@@ -1,0 +1,224 @@
+using System;
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using static UnityEditor.PlayerSettings;
+
+public class KinematicController : MonoBehaviour
+{
+    /**
+            Kinematic Equations:
+    x_f = v_avg*t + x_0
+    x_f = x_0 + v_0t + 0.5*a*t^2
+    v = v_0 + at
+    v^2 = (v_0)^2 + 2a(x - x_0) ===>    v = sqrt[ (v_0)^2 + 2a(x - x_0) ]
+     
+     */
+
+    //  Parameters
+    public LayerMask groundLayer;
+
+    //  Hips (Base) will act as x_0; futureFootPosition will be x (final position)
+    public Transform[] FootHipBase, footMesh, footIKPos, futureFootPosition;        //Removed footBase (Bone)
+
+    [Header("Main Parameters")]
+    public float distance_FT;
+    public float angle_FT;
+    public float velocity;
+
+    //  Distance (targetPosVector - footPosVector) will be deltaX
+    public float EvenDistance_FT;               //For every index, organize by even and odd in order to retain the kinematics with respect to those objects (foot)
+    public float OddDistance_FT;
+    public float EvenAngle_FT, OddAngle_FT;
+    //  Velocity at t = 0 will be 0
+    public float EvenVelocity, OddVelocity;            //Velocity will be different when changing from evens to odds (one foot after another)
+
+    [Header("Calculated Parameters")]
+    //public float maxVelocity;
+    //public float maxCalculatedDistance;
+
+    public bool _isMoving;
+    public bool _isMovingEven, _isMovingOdd;
+    public float x_valueEven = 0, x_valueOdd = 0;
+    //public bool _touchedGround;
+
+    //public float highestPoint = 0;        //The highest point being calculated depends on the effect of velocity on each feet (greater distance, the greater the height)
+    public int index = 0;
+
+    public float height;
+
+    [Header("Editable Parameters")]
+
+    public float acceleration = 5;
+    public float heightDamping = 0.6f; //set to {0 < heightDamping < 1}
+
+    // Reduce the amount of steps to take by incrementing the stepping reduction (Recommended: greater than 10 will allow for the feet to Lerp faster)
+    public float steppingReduction = 15; // set to {0 < steppingReduction < 1} for more steps, or {1 < steppingReduction < infinity} for less steps
+
+    public float maxDistance = 0.2f;
+    public float minDistance = 0.05f;
+    public float maxAngle = 1.55f;
+    public float minAngle = 0.2f;
+
+
+    // Update is called once per frame
+    void Update()
+    {
+        //  Calculate distance, angle, and velocity for even and odds
+        //Angle in Radians is more efficient
+        //  I_Velocity is 0, and time will not be specified, therefore
+        //  Velocity = sqrt[(I_velocity)^2 + (acceleration * distance_FT)]
+        //distance_FT = Mathf.Abs(Vector3.Distance(footIKPos[0].position, futureFootPosition[0].position));
+        //angle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos[0].eulerAngles.y, futureFootPosition[0].eulerAngles.y)) * Mathf.Deg2Rad;
+        //velocity = (angle_FT < maxAngle) ? Mathf.Sqrt(acceleration * distance_FT) : Mathf.Sqrt(acceleration * distance_FT * angle_FT);
+
+        EvenDistance_FT = Mathf.Abs(Vector3.Distance(footIKPos[0].position, futureFootPosition[0].position));
+        EvenAngle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos[0].eulerAngles.y, futureFootPosition[0].eulerAngles.y)) * Mathf.Deg2Rad;
+        EvenVelocity = (EvenAngle_FT < maxAngle) ? Mathf.Sqrt(acceleration * EvenDistance_FT) : Mathf.Sqrt(acceleration * EvenDistance_FT * EvenAngle_FT);
+
+        OddDistance_FT = Mathf.Abs(Vector3.Distance(footIKPos[1].position, futureFootPosition[1].position));
+        OddAngle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos[1].eulerAngles.y, futureFootPosition[1].eulerAngles.y)) * Mathf.Deg2Rad;
+        OddVelocity = (OddAngle_FT < maxAngle) ? Mathf.Sqrt(acceleration * OddDistance_FT) : Mathf.Sqrt(acceleration * OddDistance_FT * OddAngle_FT);
+
+        //if (index == FootHipBase.Length)
+        //    index = 0;
+        //else
+        //    index++;
+
+        //Change it to ensure that each even leg will move after the odd legs have all moved (then experiment with randomization)
+        
+
+        //_isMovingEven = CheckDistance(EvenDistance_FT, EvenAngle_FT);
+        //_isMovingOdd = (_isMovingEven)? false : CheckDistance(EvenDistance_FT, EvenAngle_FT);
+
+        CheckDistanceEven(EvenDistance_FT, EvenAngle_FT);
+        //CheckDistance(OddDistance_FT, OddAngle_FT);
+        if (_isMovingEven)
+        {
+            for (int j = 0; j < FootHipBase.Length; j += 2)
+            {
+                EvenFootVerticalPos(EvenVelocity, j);
+                translateFoot(EvenVelocity, j, x_valueEven);
+            }
+        }
+        else if(_isMovingOdd)
+        {
+            for (int j = 1; j < FootHipBase.Length; j += 2)
+            {
+                OddFootVerticalPos(OddVelocity, j);
+                translateFoot(OddVelocity, j, x_valueOdd);
+            }
+        }
+    }
+
+    public void CheckDistanceEven(float distance_FT, float angle_FT)
+    {
+        // (x_value <= Mathf.PI && x_value > 0)
+        //  If either the distance or angle have surpassed their respective thresholds, then the foot will move (The x_value is used to ensure that when the foot is lifted, it will return to the ground)
+        if ((distance_FT > maxDistance || angle_FT > maxAngle))   // If the foot is lifted, continue the lifting until it resets its rotation to 0
+        {
+            _isMovingEven = true;
+        }
+        //else if (distance_FT <= minDistance && angle_FT <= minAngle)   // For clarity, both position and angle have to be minimized in order for foot to completely rest
+        //{            
+        //    CheckDistanceOdd(OddDistance_FT, OddAngle_FT);
+        //    _isMovingEven = false;
+        //}
+    }
+    public void CheckDistanceOdd(float distance_FT, float angle_FT)
+    {
+        // (x_value <= Mathf.PI && x_value > 0)
+        //  If either the distance or angle have surpassed their respective thresholds, then the foot will move (The x_value is used to ensure that when the foot is lifted, it will return to the ground)
+        if ((distance_FT > maxDistance || angle_FT > maxAngle))   // If the foot is lifted, continue the lifting until it resets its rotation to 0
+        {
+            _isMovingOdd = true;
+        }
+        //else if (distance_FT <= minDistance && angle_FT <= minAngle)   // For clarity, both position and angle have to be minimized in order for foot to completely rest
+        //{
+        //    _isMovingOdd = false;
+        //}
+    }
+
+    public void groundCheck(Transform foot, Transform pos, int i)
+    {
+        foot.position = pos.position;
+        foot.rotation = pos.rotation;
+
+        Vector3 groundBase = new Vector3(futureFootPosition[i].position.x, FootHipBase[i].position.y, futureFootPosition[i].position.z);
+        Ray ray = new Ray(groundBase, -transform.up);
+        RaycastHit hitInfo;
+
+        Vector3 hitPoint;
+        if (Physics.Raycast(ray, out hitInfo, 3.0f, groundLayer))
+        {
+            hitPoint = new Vector3(futureFootPosition[i].position.x, hitInfo.point.y + 0.25f, futureFootPosition[i].position.z);
+            futureFootPosition[i].position = hitPoint;
+
+            Debug.DrawLine(ray.origin, hitInfo.point, Color.green);
+        }
+        else
+        {
+            Debug.DrawLine(ray.origin, ray.origin + ray.direction * 2.0f, Color.red);
+        }
+    }
+
+    /**
+     * With multiple feet, every odd index (1, 3, n) will be translated after every even index (0, 2)
+     */
+    public void translateFoot(float velocity, int i, float x_value)
+    {
+        if (x_value < Mathf.PI)       //_isMoving && x_value < Mathf.PI
+        {
+            footIKPos[i].position = Vector3.Lerp(footIKPos[i].position, futureFootPosition[i].position, velocity * steppingReduction * Time.deltaTime);            //Reduce the speed using steppingReduction
+            footIKPos[i].rotation = Quaternion.Lerp(footIKPos[i].rotation, futureFootPosition[i].rotation, velocity * steppingReduction * Time.deltaTime);
+            //footVerticalPos(velocity, i);
+        }
+        else
+        {
+            x_value = 0;
+        }
+    }
+
+    public void EvenFootVerticalPos(float velocity, int i)
+    {
+        height = (velocity * heightDamping);
+
+        if (x_valueEven < Mathf.PI)
+        {
+            x_valueEven += velocity * Time.deltaTime;     //If isMoving is false, x will be 0 (Look in translateFoot())
+        }
+        else
+        {
+            x_valueEven = 0;
+            _isMovingEven = false;
+            _isMovingOdd = true;
+            //CheckDistanceOdd(OddDistance_FT, OddAngle_FT);
+        }
+        //highestPoint = (highestPoint < height) ? height : highestPoint;
+
+        //  Y position modifies the vertical position of the foot
+        //  Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
+        Vector3 y_Pos = new Vector3(footIKPos[i].position.x, futureFootPosition[i].position.y + (height * Mathf.Sin(x_valueEven)), footIKPos[i].position.z);
+        footIKPos[i].position = y_Pos;
+    }
+    public void OddFootVerticalPos(float velocity, int i)
+    {
+        height = (velocity * heightDamping);
+
+        if (x_valueOdd < Mathf.PI) //(x_valueOdd < Mathf.PI && x_valueOdd >= 0)
+        {
+            x_valueOdd += velocity * Time.deltaTime;     //If isMoving is false, x will be 0 (Look in translateFoot())
+        }
+        else
+        {
+            x_valueOdd = 0;
+            _isMovingOdd = false;
+        }
+        //highestPoint = (highestPoint < height) ? height : highestPoint;
+
+        //  Y position modifies the vertical position of the foot
+        //  Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
+        Vector3 y_Pos = new Vector3(footIKPos[i].position.x, futureFootPosition[i].position.y + (height * Mathf.Sin(x_valueOdd)), footIKPos[i].position.z);
+        footIKPos[i].position = y_Pos;
+    }
+}
