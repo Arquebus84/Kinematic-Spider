@@ -2,21 +2,20 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
-public class SpringMass : MonoBehaviour
+public class SecondOrderSystem : MonoBehaviour
 {
-                                    //this.transform is the rest position
     public Transform mass;
-    public Transform staticPos;
+    //public Transform staticPos;
 
     [Header("Calculated Properties")]
     public float velocity = 0;
     public float distance_tm;   //Distance to the restLength
     public float force;
-    public float y_pos = 0;
     public float x;
 
-    [Header("Editable Properties")] 
+    [Header("Editable Properties")]
     public float acceleration;
+    //public float damping;
     public float k;
 
     //Using the equations for kinematics and spring force, implement a bouncy mass
@@ -24,32 +23,21 @@ public class SpringMass : MonoBehaviour
     //  F_spr = -k(deltaX)
     /**NOTE: The mass will follow 'this' transform whenever the user changes the current position of the object, therefore
                 the mass is the geometry, and the target transform is this transform*/
-    public void Update()
+
+    Vector3 _oldPosition;
+    public void FixedUpdate()
     {
-        mass.position = new Vector3(staticPos.position.x, staticPos.position.y + y_pos, staticPos.position.z); //staticPos[l].position;
 
         distance_tm = Vector3.Distance(mass.position, transform.position);
         //distance_tm = mass.position.y - transform.position.y;
         velocity = Mathf.Sqrt(2 * acceleration * distance_tm);
 
-        //force = distance_tm * -k;
+        var damping = 12f;
+        var bounce = 0.9f;
+        var oldPos = mass.position;
 
-        //////F = MA
-        //velocity += force;
-        //y_pos += velocity;
-        //velocity *= 0.99f;
-
-
-        //Sinusoidal Spring
-        if (x < 2 * Mathf.PI)
-        {
-            y_pos = Mathf.Sin(x);
-            x += velocity * Time.deltaTime;
-        }
-        else
-            x = 0;
-
-        //staticPos[l].position = Vector3.Lerp(staticPos[l].position, transform.position, velocity * Time.deltaTime);
-
+        mass.position = Vector3.Lerp(mass.position, transform.position, velocity * (1-bounce) * damping * Time.fixedDeltaTime);
+        mass.position = (1 + bounce) * mass.position - bounce * _oldPosition;
+        _oldPosition = oldPos;
     }
 }
