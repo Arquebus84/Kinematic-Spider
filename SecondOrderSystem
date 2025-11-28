@@ -5,7 +5,7 @@ using UnityEngine;
 public class SecondOrderSystem : MonoBehaviour
 {
     public Transform mass;
-    //public Transform staticPos;
+    public Transform basePos;
 
     [Header("Calculated Properties")]
     public float velocity = 0;
@@ -16,7 +16,8 @@ public class SecondOrderSystem : MonoBehaviour
     [Header("Editable Properties")]
     public float acceleration;
     //public float damping;
-    public float k;
+    public float damping = 50f;
+    public float bounce = 0.8f;
 
     //Using the equations for kinematics and spring force, implement a bouncy mass
     //  V_f^2 = V_i^2 + 2a(deltaX)
@@ -28,15 +29,15 @@ public class SecondOrderSystem : MonoBehaviour
     public void FixedUpdate()
     {
 
-        distance_tm = Vector3.Distance(mass.position, transform.position);
+        distance_tm = Vector3.Distance(mass.position, basePos.position);
         //distance_tm = mass.position.y - transform.position.y;
         velocity = Mathf.Sqrt(2 * acceleration * distance_tm);
 
-        var damping = 12f;
-        var bounce = 0.9f;
+        //var damping = 12f;
+        //var bounce = 0.9f;
         var oldPos = mass.position;
 
-        mass.position = Vector3.Lerp(mass.position, transform.position, velocity * (1-bounce) * damping * Time.fixedDeltaTime);
+        mass.position = Vector3.Lerp(mass.position, basePos.position, velocity * (1 - bounce) * damping * Time.fixedDeltaTime);
         mass.position = (1 + bounce) * mass.position - bounce * _oldPosition;
         _oldPosition = oldPos;
     }
