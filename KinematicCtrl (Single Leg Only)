@@ -22,15 +22,14 @@ public class KinematicCtrl : MonoBehaviour
     [Header("Main Parameters")]
 
     // Distance (targetPosVector - footPosVector) will be deltaX
-    public float EvenDistance_FT;               // For every index, organize by even and odd in order to retain the kinematics with respect to those objects (foot)
-    public float OddDistance_FT;
-    public float EvenAngle_FT, OddAngle_FT;
+    public float Distance_FT;               // For every index, organize by even and odd in order to retain the kinematics with respect to those objects (foot)
+    public float Angle_FT;
     // Velocity at t = 0 will be 0
-    public float EvenVelocity, OddVelocity;            // Velocity will be different when changing from evens to odds (one foot after another)
+    public float Velocity;            // Velocity will be different when changing from evens to odds (one foot after another)
 
     [Header("Calculated Parameters")]
     public bool _isMovingEven;
-    public bool _isMovingOdd;
+    //public bool _isMovingOdd;
     private bool temp = false;          // Temp is used to switch between even and odd states
     public float x_valueEven = 0, x_valueOdd = 0;
 
@@ -63,17 +62,17 @@ public class KinematicCtrl : MonoBehaviour
         //  I_Velocity is 0, and time will not be specified, therefore
         //  Velocity = sqrt[(I_velocity)^2 + (acceleration * distance_FT)]
 
-        EvenDistance_FT = Mathf.Abs(Vector3.Distance(footIKPos.position, futureFootPosition.position));
-        EvenAngle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos.eulerAngles.y, futureFootPosition.eulerAngles.y)) * Mathf.Deg2Rad;
-        EvenVelocity = (EvenAngle_FT < maxAngle) ? Mathf.Sqrt(acceleration * EvenDistance_FT) : Mathf.Sqrt(acceleration * EvenDistance_FT * EvenAngle_FT);
+        Distance_FT = Mathf.Abs(Vector3.Distance(footIKPos.position, futureFootPosition.position));
+        Angle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos.eulerAngles.y, futureFootPosition.eulerAngles.y)) * Mathf.Deg2Rad;
+        Velocity = (Angle_FT < maxAngle) ? Mathf.Sqrt(acceleration * Distance_FT) : Mathf.Sqrt(acceleration * Distance_FT * Angle_FT);
 
-        CheckDistanceEven(EvenDistance_FT, EvenAngle_FT);
+        CheckDistanceEven(Distance_FT, Angle_FT);
 
         // NOTE: Use temp to ensure that both booleans do not "lock", i.e. one must deactivate the other (similar to temp switching)
         if (_isMovingEven && temp == false)
         {
-            EvenFootVerticalPos(EvenVelocity);
-            translateFoot(EvenVelocity, x_valueEven);
+            EvenFootVerticalPos(Velocity);
+            translateFoot(Velocity, x_valueEven);
         }
         else
         {
