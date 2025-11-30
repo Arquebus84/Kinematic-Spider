@@ -92,6 +92,10 @@ public class KinematicController : MonoBehaviour
                 translateFoot(OddVelocity, j, x_valueOdd);
             }
         }
+        else
+        {
+            temp = false;
+        }
     }
 
     public void CheckDistanceEven(float distance_FT, float angle_FT)
@@ -144,7 +148,7 @@ public class KinematicController : MonoBehaviour
     // With multiple feet, every odd index (1, 3, n) will be translated after every even index (0, 2)
     public void translateFoot(float velocity, int i, float x_value)
     {
-        if (x_value < Mathf.PI)
+        if (x_value <= Mathf.PI)
         {
             // Reduce the speed using steppingReduction
             footIKPos[i].position = Vector3.Lerp(footIKPos[i].position, futureFootPosition[i].position, velocity * steppingReduction * Time.deltaTime);
@@ -162,7 +166,7 @@ public class KinematicController : MonoBehaviour
 
         if (x_valueEven <= Mathf.PI)
         {
-            x_valueEven += velocity * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
+            x_valueEven += velocity * Time.deltaTime;      // Match the speed on the lift movement to the ground movement using steppReduction (ommited for speed)
         }
         else
         {
@@ -185,7 +189,7 @@ public class KinematicController : MonoBehaviour
 
         if (x_valueOdd <= Mathf.PI)
         {
-            x_valueOdd += velocity * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
+            x_valueOdd += velocity * Time.deltaTime;     // Match the speed on the lift movement to the ground movement using steppReduction (ommited for speed)
         }
         else
         {
