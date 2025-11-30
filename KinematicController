@@ -31,7 +31,7 @@ public class KinematicController : MonoBehaviour
     [Header("Calculated Parameters")]
     public bool _isMovingEven;
     public bool _isMovingOdd;
-    public bool temp = false;
+    private bool temp = false;          // Temp is used to switch between even and odd states
     public float x_valueEven = 0, x_valueOdd = 0;
 
     // The highest point being calculated depends on the effect of velocity on each feet (greater distance, the greater the height)
