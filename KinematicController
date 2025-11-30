@@ -10,38 +10,31 @@ public class KinematicController : MonoBehaviour
     x_f = v_avg*t + x_0
     x_f = x_0 + v_0t + 0.5*a*t^2
     v = v_0 + at
-    v^2 = (v_0)^2 + 2a(x - x_0) ===>    v = sqrt[ (v_0)^2 + 2a(x - x_0) ]
-     
+    v^2 = (v_0)^2 + 2a(x - x_0) ===>    v = sqrt[ (v_0)^2 + 2a(x - x_0) ]     
      */
 
     //  Parameters
     public LayerMask groundLayer;
 
     //  Hips (Base) will act as x_0; futureFootPosition will be x (final position)
-    public Transform[] FootHipBase, footMesh, footIKPos, futureFootPosition;        //Removed footBase (Bone)
+    public Transform[] FootHipBase, footMesh, footIKPos, futureFootPosition;
 
     [Header("Main Parameters")]
-    //public float distance_FT;
-    //public float angle_FT;
-    //public float velocity;
 
-    //  Distance (targetPosVector - footPosVector) will be deltaX
-    public float EvenDistance_FT;               //For every index, organize by even and odd in order to retain the kinematics with respect to those objects (foot)
+    // Distance (targetPosVector - footPosVector) will be deltaX
+    public float EvenDistance_FT;               // For every index, organize by even and odd in order to retain the kinematics with respect to those objects (foot)
     public float OddDistance_FT;
     public float EvenAngle_FT, OddAngle_FT;
-    //  Velocity at t = 0 will be 0
-    public float EvenVelocity, OddVelocity;            //Velocity will be different when changing from evens to odds (one foot after another)
+    // Velocity at t = 0 will be 0
+    public float EvenVelocity, OddVelocity;            // Velocity will be different when changing from evens to odds (one foot after another)
 
     [Header("Calculated Parameters")]
     public bool _isMovingEven;
     public bool _isMovingOdd;
     public bool temp = false;
     public float x_valueEven = 0, x_valueOdd = 0;
-    //public bool _touchedGround;
 
-    //The highest point being calculated depends on the effect of velocity on each feet (greater distance, the greater the height)
-    //public float highestPoint = 0; 
-
+    // The highest point being calculated depends on the effect of velocity on each feet (greater distance, the greater the height)
     public float evenHeight, oddHeight;
 
     public float maxOddDist, maxEvenDist;
@@ -59,9 +52,8 @@ public class KinematicController : MonoBehaviour
     public float maxAngle = 1.55f;
     public float minAngle = 0.2f;
 
-
     // Update is called once per frame
-    void Update()
+    public void Update()
     {
         //  Calculate distance, angle, and velocity for even and odd legs
         //  Angle converted in Radians
@@ -80,9 +72,6 @@ public class KinematicController : MonoBehaviour
         {
             groundCheck(footMesh[i], footIKPos[i], i);
         }
-
-        //_isMovingEven = CheckDistance(EvenDistance_FT, EvenAngle_FT);
-        //_isMovingOdd = (_isMovingEven)? false : CheckDistance(EvenDistance_FT, EvenAngle_FT);
 
         CheckDistanceEven(EvenDistance_FT, EvenAngle_FT);
 
@@ -115,11 +104,6 @@ public class KinematicController : MonoBehaviour
             maxEvenDist = distance_FT;
             _isMovingEven = true;
         }
-        //else if (distance_FT <= minDistance && angle_FT <= minAngle) 
-        //{
-        //    CheckDistanceOdd(OddDistance_FT, OddAngle_FT);
-        //    _isMovingEven = false;
-        //}
         // For clarity, both position and angle have to be minimized in order for foot to completely rest
     }
     public void CheckDistanceOdd(float distance_FT, float angle_FT)
@@ -130,10 +114,6 @@ public class KinematicController : MonoBehaviour
             maxOddDist = distance_FT;
             _isMovingOdd = true;
         }
-        //else if (distance_FT <= minDistance && angle_FT <= minAngle) 
-        //{
-        //    _isMovingOdd = false;
-        //}
         // For clarity, both position and angle have to be minimized in order for foot to completely rest
     }
 
@@ -147,7 +127,7 @@ public class KinematicController : MonoBehaviour
         RaycastHit hitInfo;
 
         Vector3 hitPoint;
-        if (Physics.Raycast(ray, out hitInfo, 3.0f, groundLayer))
+        if (Physics.Raycast(ray, out hitInfo, 6.0f, groundLayer))
         {
             hitPoint = new Vector3(futureFootPosition[i].position.x, hitInfo.point.y + 0.25f, futureFootPosition[i].position.z);
             futureFootPosition[i].position = hitPoint;
@@ -161,14 +141,12 @@ public class KinematicController : MonoBehaviour
         }
     }
 
-    /**
-     * With multiple feet, every odd index (1, 3, n) will be translated after every even index (0, 2)
-     */
+    // With multiple feet, every odd index (1, 3, n) will be translated after every even index (0, 2)
     public void translateFoot(float velocity, int i, float x_value)
     {
         if (x_value < Mathf.PI)
         {
-            //Reduce the speed using steppingReduction
+            // Reduce the speed using steppingReduction
             footIKPos[i].position = Vector3.Lerp(footIKPos[i].position, futureFootPosition[i].position, velocity * steppingReduction * Time.deltaTime);
             footIKPos[i].rotation = Quaternion.Lerp(footIKPos[i].rotation, futureFootPosition[i].rotation, velocity * steppingReduction * Time.deltaTime);
         }
@@ -184,7 +162,7 @@ public class KinematicController : MonoBehaviour
 
         if (x_valueEven <= Mathf.PI)
         {
-            x_valueEven += velocity * Time.deltaTime;     //If isMoving is false, x will be 0 (Look in translateFoot())
+            x_valueEven += velocity * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
         }
         else
         {
@@ -193,12 +171,11 @@ public class KinematicController : MonoBehaviour
             temp = true;
             _isMovingOdd = true;
         }
-        //highestPoint = (highestPoint < height) ? height : highestPoint;
 
-        //  Y position modifies the vertical position of the foot
-        //  Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
-        Vector3 y_Pos = new Vector3(footIKPos[i].position.x, 
-            futureFootPosition[i].position.y + (evenHeight * Mathf.Sin(x_valueEven)), 
+        // Y position modifies the vertical position of the foot
+        // Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
+        Vector3 y_Pos = new Vector3(footIKPos[i].position.x,
+            futureFootPosition[i].position.y + (evenHeight * Mathf.Sin(x_valueEven)),
             footIKPos[i].position.z);
         footIKPos[i].position = y_Pos;
     }
@@ -206,9 +183,9 @@ public class KinematicController : MonoBehaviour
     {
         oddHeight = (velocity * heightDamping);
 
-        if (x_valueOdd <= Mathf.PI) 
+        if (x_valueOdd <= Mathf.PI)
         {
-            x_valueOdd += velocity * Time.deltaTime;     //If isMoving is false, x will be 0 (Look in translateFoot())
+            x_valueOdd += velocity * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
         }
         else
         {
@@ -216,12 +193,11 @@ public class KinematicController : MonoBehaviour
             _isMovingOdd = false;
             temp = false;
         }
-        //highestPoint = (highestPoint < height) ? height : highestPoint;
 
-        //  Y position modifies the vertical position of the foot
-        //  Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
-        Vector3 y_Pos = new Vector3(footIKPos[i].position.x, 
-            futureFootPosition[i].position.y + (oddHeight * Mathf.Sin(x_valueOdd)), 
+        // Y position modifies the vertical position of the foot
+        // Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
+        Vector3 y_Pos = new Vector3(footIKPos[i].position.x,
+            futureFootPosition[i].position.y + (oddHeight * Mathf.Sin(x_valueOdd)),
             footIKPos[i].position.z);
         footIKPos[i].position = y_Pos;
     }
