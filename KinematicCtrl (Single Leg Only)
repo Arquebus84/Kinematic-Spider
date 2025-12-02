@@ -28,15 +28,14 @@ public class KinematicCtrl : MonoBehaviour
     public float Velocity;            // Velocity will be different when changing from evens to odds (one foot after another)
 
     [Header("Calculated Parameters")]
-    public bool _isMovingEven;
-    //public bool _isMovingOdd;
+    public bool _isMoving;
     private bool temp = false;          // Temp is used to switch between even and odd states
-    public float x_valueEven = 0, x_valueOdd = 0;
+    public float x_value = 0;
 
     // The highest point being calculated depends on the effect of velocity on each feet (greater distance, the greater the height)
-    public float evenHeight, oddHeight;
+    public float Height;
 
-    public float maxOddDist, maxEvenDist;
+    public float maxDist;
 
     [Header("Editable Parameters")]
 
@@ -66,13 +65,13 @@ public class KinematicCtrl : MonoBehaviour
         Angle_FT = Mathf.Abs(Mathf.DeltaAngle(footIKPos.eulerAngles.y, futureFootPosition.eulerAngles.y)) * Mathf.Deg2Rad;
         Velocity = (Angle_FT < maxAngle) ? Mathf.Sqrt(acceleration * Distance_FT) : Mathf.Sqrt(acceleration * Distance_FT * Angle_FT);
 
-        CheckDistanceEven(Distance_FT, Angle_FT);
+        CheckDistance(Distance_FT, Angle_FT);
 
         // NOTE: Use temp to ensure that both booleans do not "lock", i.e. one must deactivate the other (similar to temp switching)
-        if (_isMovingEven && temp == false)
+        if (_isMoving && temp == false)
         {
-            EvenFootVerticalPos(Velocity);
-            translateFoot(Velocity, x_valueEven);
+            FootVerticalPos(Velocity);
+            translateFoot(Velocity, x_value);
         }
         else
         {
@@ -81,15 +80,15 @@ public class KinematicCtrl : MonoBehaviour
 
     }
 
-    public void CheckDistanceEven(float distance_FT, float angle_FT)
+    public void CheckDistance(float distance_FT, float angle_FT)
     {
         // If either the distance or angle have surpassed their respective thresholds, then the foot will move
         //      (The x_value is used to ensure that when the foot is lifted, it will return to the ground)
         // If the foot is lifted, continue the lifting until it resets its rotation to 0
         if ((distance_FT > maxDistance || angle_FT > maxAngle))
         {
-            maxEvenDist = distance_FT;
-            _isMovingEven = true;
+            maxDist = distance_FT;
+            _isMoving = true;
         }
         // For clarity, both position and angle have to be minimized in order for foot to completely rest
     }
@@ -133,18 +132,18 @@ public class KinematicCtrl : MonoBehaviour
         }
     }
 
-    public void EvenFootVerticalPos(float velocity)
+    public void FootVerticalPos(float velocity)
     {
-        evenHeight = (velocity * heightDamping);
+        Height = (velocity * heightDamping);
 
-        if (x_valueEven <= Mathf.PI)
+        if (x_value <= Mathf.PI)
         {
-            x_valueEven += velocity * steppingReduction * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
+            x_value += velocity * steppingReduction * Time.deltaTime;     // If isMoving is false, x will be 0 (Look in translateFoot())
         }
         else
         {
-            x_valueEven = 0;
-            _isMovingEven = false;
+            x_value = 0;
+            _isMoving = false;
             //temp = true;
             //_isMovingOdd = true;
         }
@@ -152,7 +151,7 @@ public class KinematicCtrl : MonoBehaviour
         // Y position modifies the vertical position of the foot
         // Using a*Sin(n*x) + h, modify the amplitude (a) and the duration (n) using velocity; use target vertical position to adjust the height (h) of the footstep
         Vector3 y_Pos = new Vector3(footIKPos.position.x,
-            futureFootPosition.position.y + (evenHeight * Mathf.Sin(x_valueEven)),
+            futureFootPosition.position.y + (Height * Mathf.Sin(x_value)),
             footIKPos.position.z);
         footIKPos.position = y_Pos;
     }
