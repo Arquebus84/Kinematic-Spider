@@ -10,8 +10,8 @@ public class SecondOrderSystem : MonoBehaviour
     [Header("Calculated Properties")]
     public float velocity = 0;
     public float distance_tm;   //Distance to the restLength
-    public float force;
-    public float x;
+    //public float force;
+    //public float x;
 
     [Header("Editable Properties")]
     public float acceleration;
@@ -26,11 +26,14 @@ public class SecondOrderSystem : MonoBehaviour
                 the mass is the geometry, and the target transform is this transform*/
 
     Vector3 _oldPosition;
+    public void Awake()
+    {
+        _oldPosition = mass.position;
+    }
+
     public void FixedUpdate()
     {
-
         distance_tm = Vector3.Distance(mass.position, basePos.position);
-        //distance_tm = mass.position.y - transform.position.y;
         velocity = Mathf.Sqrt(2 * acceleration * distance_tm);
 
         //var damping = 12f;
